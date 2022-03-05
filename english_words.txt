@@ -1,0 +1,9 @@
+1,	render,	~이 되게 하다
+2,	decade,	10년
+3,	crude,	가공되지 않은
+5,	furniture,	가구
+6,	impoverish,	가난하게하다
+7,	slender,	가느다란
+8,	confine,	가두다
+9,	subside,	가라앉다
+10,	perspective,	가망
