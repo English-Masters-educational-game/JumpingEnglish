@@ -29,15 +29,14 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 이름�
 HWND hVScroll;
 int iVScrollPos;
 
-int max_width = 10;
-int max_height = 20;
+int max_tile_x = 10;
+int max_tile_y = 20;
 
 int tile_pos_x = 0;
 int tile_pos_y = 0;
 
-int is_block[20][10];
-int on_tile_src_x = 1;
-int on_tile_src_y = 1;
+int map_block[20][10] = {0};
+int map_word[20][10] = {0};
 
 Character char1;
 
@@ -71,11 +70,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     //    is_block[j] = new int[max_height];
     //}
 
-    for (int i = 0; i < max_height; i++)
+    for (int i = 0; i < max_tile_y; i++)
     {
-        for (int j = 0; j < max_width; j++)
+        for (int j = 0; j < max_tile_x; j++)
         {
-            is_block[j][i] = 0;
+            map_block[j][i] = 0;
         }
     }
 
@@ -191,45 +190,47 @@ void OnPaint(HWND hWnd, HDC hdc, PAINTSTRUCT& ps)
     OldBit = (HBITMAP)SelectObject(hMemDC, hBit);
 
     Graphics G(hMemDC);
-    Pen P(Color(255, 255, 0, 255), 2);
+    Pen P(Color(255, 255, 0, 0), 2);
 
     Image* image = Image::FromFile(L"blocks.png");
+    Image* word_box = Image::FromFile(L"word_box.png");
 
     G.Clear(Color(255, 255, 255, 255));
 
-    for (int i = 0; i <= max_width; i++)
+    // 블럭 라인
+    for (int i = 0; i <= max_tile_x; i++)
     {
-        G.DrawLine(&P, 32 * i, 0, 32 * i, 32 * max_height);
-        for (int j = 0; j <= max_height; j++)
+        G.DrawLine(&P, 32 * i, 0, 32 * i, 32 * max_tile_y);
+        for (int j = 0; j <= max_tile_y; j++)
         {
-            G.DrawLine(&P, 0, 32*j, 32 * max_width, 32*j);
+            G.DrawLine(&P, 0, 32*j, 32 * max_tile_x, 32*j);
         }
     }
 
-    for (int i = 0; i < max_height; i++)
+    for (int j = 0; j < max_tile_y; j++)
     {
-        for (int j = 0; j < max_width; j++)
+        for (int i = 0; i < max_tile_x; i++)
         {
-            if (is_block[j][i] > 0)
+            if (map_block[j][i] > 0)
             {
                 Rect rect;
-                rect.X = 0 + on_tile_src_x * 32;
-                rect.Y = 0 + on_tile_src_y * 32;
+                rect.X = 0 + 32 * i;
+                rect.Y = 0 + 32 * j;
                 rect.Width = 32;
                 rect.Height = 32;
 
-                G.DrawImage(image, rect, (32 * tile_pos_x), (32 * tile_pos_y), 32, 32, UnitPixel);
+                G.DrawImage(image, rect, 0, 0, 32, 32, UnitPixel);
             }
         }
     }
 
-    
 
+    // 캐릭터
     Image* character1 = Image::FromFile(L"character.png");
 
     Rect rect;
     rect.X = char1.x;
-    rect.Y = max_height * 32 - char1.y;
+    rect.Y = max_tile_y * 32 - char1.y;
     rect.Width = 32;
     rect.Height = 48;
 
@@ -237,7 +238,7 @@ void OnPaint(HWND hWnd, HDC hdc, PAINTSTRUCT& ps)
 
     // image.png 파일을 이용하여 Image 객체를 생성합니다.
 
-    // (x, y)에 width X height 크기의 이미지를 그립니다.
+    // 블럭 이미지
     G.DrawImage(image, 800, 100, 256, 192);
 
     //for (int i = 0; i <= 8; i++)
@@ -248,17 +249,24 @@ void OnPaint(HWND hWnd, HDC hdc, PAINTSTRUCT& ps)
     //        G.DrawLine(&P, 800, 100 + 32 * j, 800 + 32 * 8, 100 + 32 * j);
     //    }
     //}
+
+    // 선택 블럭 선택
     G.DrawRectangle(&P, Rect(800 + 32 * tile_pos_x, 100 + 32 * tile_pos_y, 32, 32));
+
+
+    // 박스 이미지
+    G.DrawImage(word_box, 800+8, 300, 16, 16);
 
     // 메모리비트를 hdc비트로 블리트
     BitBlt(hdc, 0, 0, crt.right, crt.bottom, hMemDC, 0, 0, SRCCOPY);
 
     // 데이터 메모리 해제
     delete image;
+    delete word_box;
+    delete character1;
 
     SelectObject(hMemDC, OldBit);
     DeleteDC(hMemDC);
-    EndPaint(hWnd, &ps);
 }
 
 //
@@ -399,20 +407,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         wsprintf(buf, L"x: %d, y: %d \n", mouse_x, mouse_y);
         OutputDebugString(buf);
 
-        // 타일 선택 보드
-        if ((mouse_x >= 800) && (mouse_y >= 100))
-        {
-            tile_pos_x = (mouse_x - 800) / 32;
-            tile_pos_y = (mouse_y - 100) / 32;
-        }
 
         // 온보드
-        on_tile_src_x = (mouse_x) / 32;
-        on_tile_src_y = (mouse_y) / 32;
 
-        if ((on_tile_src_x < max_width) && (on_tile_src_y < max_height))
+        if ((mouse_y > 0) && (mouse_y < (max_tile_y * 32)))
         {
-            is_block[on_tile_src_y][on_tile_src_x] = 1; // 런타임 예외 발생
+            if ((mouse_x > 0) && (mouse_x < (max_tile_x * 32)))
+            {
+                
+                int x = mouse_x / 32;
+                int y = mouse_y / 32;
+                map_block[y][x] = 1; // 런타임 예외 발생
+            }
         }
 
     }   
